@@ -31,7 +31,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // Disable CSRF for APIs
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users/register", "/api/users/login").permitAll() // Public endpoints
+                        .requestMatchers("/api/users/register", "/api/users/login", "/ws/**", "/api/messages/**").permitAll()
                         .anyRequest().authenticated() // All other endpoints require a token
                 );
 
