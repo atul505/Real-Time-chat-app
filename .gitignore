@@ -1,4 +1,27 @@
-# Compiled class file
+# Database & Local Secrets
+.env
+*.local
+mobile_app/.env
+
+# Java / Maven
+backend_api/target/
+backend_api/.mvn/
+backend_api/*.jar
+backend_api/*.war
+backend_api/.mvn/wrapper/maven-wrapper.jar
+
+# Flutter / Dart
+mobile_app/.dart_tool/
+mobile_app/build/
+mobile_app/.packages
+mobile_app/.pub-cache/
+mobile_app/.pub/
+
+# IDE Settings
+.idea/
+*.iml
+*.iws
+.vscode/# Compiled class file
 *.class
 
 # Log file
