@@ -1,35 +1,45 @@
 package chat_backend.chat_backend.controller;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import chat_backend.chat_backend.dto.AuthResponse;
+import chat_backend.chat_backend.dto.LoginRequest;
+import chat_backend.chat_backend.dto.RegisterRequest;
 import chat_backend.chat_backend.entity.User;
-import chat_backend.chat_backend.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import chat_backend.chat_backend.service.UserService;
+import jakarta.validation.Valid;
 
-import java.util.List;
-
-@RestController // Marks this class as a REST controller
-@RequestMapping("/api/users") // Base URL for all endpoints in this class
+@RestController
+@RequestMapping("/api/users")
 public class UserController {
 
-    @Autowired // Injects your UserRepository
-    private UserRepository userRepository;
+    private final UserService userService;
 
-    // A simple GET endpoint to test database connectivity
-    @GetMapping("/test")
-    public String testDatabase() {
-        User testUser = User.builder()
-                .username("test_user_" + System.currentTimeMillis())
-                .email("test" + System.currentTimeMillis() + "@example.com")
-                .password("securePassword123")
-                .build();
-
-        userRepository.save(testUser); // Saves the user to Neon
-        return "User saved successfully to Neon! Check your dashboard.";
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
-    // Endpoint to fetch all users
-    @GetMapping
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+        try {
+            User registeredUser = userService.registerUser(request);
+            return ResponseEntity.ok("User registered successfully with ID: " + registeredUser.getId());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            AuthResponse response = userService.loginUser(request);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
     }
 }
