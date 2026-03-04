@@ -56,7 +56,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   void _sendMessage() {
     if (_messageController.text.isNotEmpty) {
       _chatService.sendMessage(
-        "Atul_Developer",
+        widget.userName, // Now it uses the logged-in user!
         _messageController.text,
       );
       _messageController.clear();
@@ -110,7 +110,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
-                  bool isMe = msg['sender'] == "Atul_Developer";
+                  // Compare the message sender to the current logged-in user
+                  bool isMe = msg['sender'] == widget.userName;
                   return _buildMessageBubble(msg['content'] ?? "", isMe);
                 },
               ),
@@ -171,5 +172,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         ],
       ),
     );
+
   }
 }

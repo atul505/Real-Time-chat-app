@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
-  // Use 10.0.2.2 for Android Emulator, or your Local IP for physical devices
+  // Use localhost:8080 for your ADB reverse setup
   static const String baseUrl = 'http://localhost:8080/api/users';
   final _storage = const FlutterSecureStorage();
 
@@ -14,37 +14,57 @@ class AuthService {
         Uri.parse('$baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(const Duration(seconds: 10)); // Stop waiting after 10 seconds
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
+        // Save the JWT token securely to persist login
         await _storage.write(key: 'jwt_token', value: data['token']);
-        return {'success': true, 'username': data['username']};
+
+        return {
+          'success': true,
+          'username': data['username'],
+          'token': data['token']
+        };
       } else {
         return {'success': false, 'message': 'Invalid Email or Password'};
       }
     } catch (e) {
-      // This will now catch timeouts and connection errors
-      return {'success': false, 'message': 'Server unreachable. Check IP or Firewall.'};
+      return {'success': false, 'message': 'Server unreachable. Check ADB reverse or Firewall.'};
     }
   }
 
   // Registration Method
   Future<Map<String, dynamic>> register(String username, String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'email': email,
-        'password': password,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'email': email,
+          'password': password,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      return {'success': true};
-    } else {
-      return {'success': false, 'message': response.body};
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        return {'success': false, 'message': response.body};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Registration failed: $e'};
     }
+  }
+
+  // Check if user is already logged in (Use this in main.dart)
+  Future<String?> getToken() async {
+    return await _storage.read(key: 'jwt_token');
+  }
+
+  // Logout Method
+  Future<void> logout() async {
+    await _storage.delete(key: 'jwt_token');
   }
 }
