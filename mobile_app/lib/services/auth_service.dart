@@ -7,7 +7,7 @@ class AuthService {
   static const String baseUrl = 'http://localhost:8080/api/users';
   final _storage = const FlutterSecureStorage();
 
-  // Login Method
+  // 1. Updated Login: Correctly saves the username for the Home Page preview
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
@@ -19,14 +19,11 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Save the JWT token securely to persist login
+        // Save both JWT and Username from the server response
         await _storage.write(key: 'jwt_token', value: data['token']);
+        await _storage.write(key: 'username', value: data['username']);
 
-        return {
-          'success': true,
-          'username': data['username'],
-          'token': data['token']
-        };
+        return {'success': true};
       } else {
         return {'success': false, 'message': 'Invalid Email or Password'};
       }
@@ -35,7 +32,12 @@ class AuthService {
     }
   }
 
-  // Registration Method
+  // 2. Added Getter: Allows Home Page to fetch messages from Neon based on this user
+  Future<String?> getUsername() async {
+    return await _storage.read(key: 'username');
+  }
+
+  // 3. Registration: Uses the defined baseUrl
   Future<Map<String, dynamic>> register(String username, String email, String password) async {
     try {
       final response = await http.post(
@@ -58,13 +60,12 @@ class AuthService {
     }
   }
 
-  // Check if user is already logged in (Use this in main.dart)
   Future<String?> getToken() async {
     return await _storage.read(key: 'jwt_token');
   }
 
-  // Logout Method
+  // 4. Improved Logout: Deletes ALL keys (token and username) to ensure a clean exit
   Future<void> logout() async {
-    await _storage.delete(key: 'jwt_token');
+    await _storage.deleteAll();
   }
 }

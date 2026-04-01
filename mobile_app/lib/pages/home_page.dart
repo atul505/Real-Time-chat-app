@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'login_page.dart';
 import 'chat_room_page.dart';
-import '../services/auth_service.dart'; // Import to use logout
+import '../services/auth_service.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,6 +15,48 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
+  List<dynamic> _allUsers = [];
+  List<dynamic> _filteredUsers = [];
+  bool _isLoading = true;
+  String _searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  // Load and filter users to remove YOURSELF from the list
+  Future<void> _loadUsers() async {
+    final String? loggedInUser = await _authService.getUsername();
+    final String url = 'http://localhost:8080/api/users?currentUser=$loggedInUser';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+
+        setState(() {
+          // Manual filter to ensure "Atul505" doesn't see "Atul505"
+          _allUsers = data.where((user) => user['username'] != loggedInUser).toList();
+          _filteredUsers = _allUsers;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Fetch Error: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _filterSearch(String query) {
+    setState(() {
+      _searchQuery = query;
+      _filteredUsers = _allUsers
+          .where((user) => user['username'].toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +69,9 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
               onPressed: () async {
-                // Properly clear the encrypted token
                 await _authService.logout();
                 if (mounted) {
-                  Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const LoginPage())
-                  );
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage()));
                 }
               },
               icon: const Icon(Icons.logout, color: Colors.white70)
@@ -51,26 +90,18 @@ class _HomePageState extends State<HomePage> {
               ),
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(topLeft: Radius.circular(40), topRight: Radius.circular(40)),
-                // Use FutureBuilder to fetch real data from Neon
-                child: FutureBuilder<List<dynamic>>(
-                  future: _fetchUsers(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (snapshot.hasError) {
-                      return Center(child: Text("Error: ${snapshot.error}"));
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text("No users found in database"));
-                    }
-
-                    return ListView.builder(
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        final user = snapshot.data![index];
-                        return _buildChatItem(context, user);
-                      },
-                    );
-                  },
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                  onRefresh: _loadUsers,
+                  child: _filteredUsers.isEmpty
+                      ? const Center(child: Text("No contacts found"))
+                      : ListView.builder(
+                    itemCount: _filteredUsers.length,
+                    itemBuilder: (context, index) {
+                      return _buildChatItem(context, _filteredUsers[index]);
+                    },
+                  ),
                 ),
               ),
             ),
@@ -78,35 +109,18 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: _loadUsers, // Use for quick refresh
         backgroundColor: const Color(0xFF00d2ff),
-        child: const Icon(Icons.add_comment_rounded, color: Colors.white),
+        child: const Icon(Icons.refresh, color: Colors.white),
       ),
     );
-  }
-
-  // Fetch users from your Spring Boot /api/users endpoint
-  Future<List<dynamic>> _fetchUsers() async {
-    try {
-      final response = await http.get(Uri.parse('http://localhost:8080/api/users'));
-      print("Response Status: ${response.statusCode}"); // If this is 403, it's SecurityConfig!
-      print("Response Body: ${response.body}"); // If this is HTML, it's the @RestController issue!
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception("Server returned ${response.statusCode}");
-      }
-    } catch (e) {
-      print("Connection Error: $e"); // If this triggers, it's an ADB/IP issue!
-      throw e;
-    }
   }
 
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: TextField(
+        onChanged: _filterSearch,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: "Search contacts...",
@@ -118,35 +132,68 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-  } // Added missing closing brace here
+  }
 
   Widget _buildChatItem(BuildContext context, dynamic user) {
-    String name = user['username'] ?? "Unknown"; // Match your entity field
+    String name = user['username'] ?? "Unknown";
+    String lastMsg = user['lastMessage'] ?? "No messages yet";
+    String rawTime = user['lastTime'] ?? "";
+
+    // CLEAN TIME FORMATTING LOGIC
+    String formattedTime = "";
+    if (rawTime.isNotEmpty) {
+      try {
+        DateTime dateTime = DateTime.parse(rawTime).toLocal();
+        DateTime now = DateTime.now();
+        if (dateTime.day == now.day && dateTime.month == now.month && dateTime.year == now.year) {
+          formattedTime = DateFormat.jm().format(dateTime); // e.g., "1:05 AM"
+        } else if (dateTime.day == now.day - 1) {
+          formattedTime = "Yesterday";
+        } else {
+          formattedTime = DateFormat('MMM d').format(dateTime);
+        }
+      } catch (e) {
+        formattedTime = "";
+      }
+    }
+
     return ListTile(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => ChatRoomPage(userName: name)),
-        );
+        ).then((_) => _loadUsers()); // Refresh when coming back from chat
       },
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      leading: Stack(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: CircleAvatar(
+        radius: 28,
+        backgroundColor: Colors.blueGrey[100],
+        child: Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1e3c72))),
+      ),
+      title: Text(
+        name,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis, // Fix for Atul_Developer wrapping
+      ),
+      subtitle: Text(
+        lastMsg,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: lastMsg == "No messages yet" ? Colors.grey : Colors.black54),
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.blueGrey[100],
-            child: Text(name[0].toUpperCase()),
+          Text(
+            formattedTime,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
-          const Positioned(
-            right: 0,
-            bottom: 0,
-            child: CircleAvatar(radius: 7, backgroundColor: Colors.white, child: CircleAvatar(radius: 5, backgroundColor: Colors.green)),
-          ),
+          const SizedBox(height: 5),
+          const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
         ],
       ),
-      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-      subtitle: const Text("Hey, how is the project going?", maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: const Text("12:45 PM", style: TextStyle(color: Colors.grey, fontSize: 12)),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
+import 'auth_service.dart'; // Add this line at the top
 
 import 'package:stomp_dart_client/stomp_frame.dart';
 
@@ -21,28 +22,35 @@ class ChatService {
     stompClient.activate();
   }
 
-  void onConnect(StompFrame frame) {
-    // Subscribe to the topic we defined in Spring Boot's ChatController
-    stompClient.subscribe(
-      destination: '/topic/messages',
-      callback: (frame) {
-        if (frame.body != null) {
-          onMessageReceived(jsonDecode(frame.body!));
-        }
-      },
-    );
+  // Inside ChatService.dart
+  void onConnect(StompFrame frame) async {
+    // Use the newly defined getUsername method
+    final String? myName = await AuthService().getUsername();
+
+    if (myName != null) {
+      stompClient.subscribe(
+        destination: '/user/$myName/queue/messages',
+        callback: (frame) {
+          if (frame.body != null) {
+            onMessageReceived(jsonDecode(frame.body!));
+          }
+        },
+      );
+    }
   }
 
-  void sendMessage(String sender, String content) {
+  void sendMessage(String sender, String content, String receiver) {
+    final message = {
+      'sender': sender,
+      'content': content,
+      'receiver': receiver, // This ensures Neon gets the receiver name
+      'timestamp': DateTime.now().toIso8601String(),
+    };
     stompClient.send(
-      destination: '/app/chat', // Matches @MessageMapping("/chat")
-      body: jsonEncode({
-        'sender': sender,
-        'content': content,
-      }),
+      destination: '/app/chat',
+      body: jsonEncode(message),
     );
   }
-
   void disconnect() {
     stompClient.deactivate();
   }

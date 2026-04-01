@@ -13,13 +13,11 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _usernameController = TextEditingController();
   final _authService = AuthService();
   bool _isLoading = false;
 
   void _handleLogin() async {
-    // 1. Validate that all fields are filled before calling the API
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _usernameController.text.isEmpty) {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty ) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill in all fields")),
       );
@@ -28,16 +26,14 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    // 2. The AuthService now handles the encrypted storage internally
     final result = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text
+      _emailController.text.trim(),
+      _passwordController.text,
     );
 
     setState(() => _isLoading = false);
 
     if (result['success']) {
-      // 3. Navigate directly to HomePage. Persistence is handled by the Secure Storage in AuthService
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomePage()),
@@ -76,8 +72,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 40),
 
                   // Display Name field ensures the chat room knows who you are
-                  _buildTextField("Display Name (for Chat)", _usernameController, Icons.person_outline),
-                  const SizedBox(height: 20),
+
                   _buildTextField("Email", _emailController, Icons.email_outlined),
                   const SizedBox(height: 20),
                   _buildTextField("Password", _passwordController, Icons.lock_outline, isPassword: true),
