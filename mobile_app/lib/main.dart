@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 import 'services/auth_service.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   // 1. Ensure Flutter is ready to handle async calls before runApp
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set status bar style for dark theme
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: AppTheme.background,
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
 
   final authService = AuthService();
 
@@ -26,11 +36,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Real-Time Chat',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF1e3c72),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1e3c72)),
-      ),
+      title: 'Messenger',
+      theme: AppTheme.darkTheme,
       // 4. Load the determined page (Home if logged in, Login if not)
       home: initialWidget,
     );
