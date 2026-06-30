@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../config/api_config.dart';
 
 class AuthService {
-  // Use localhost:8080 for your ADB reverse setup
-  static const String baseUrl = 'http://localhost:8080/api/users';
+  static const String baseUrl = ApiConfig.usersUrl;
   final _storage = const FlutterSecureStorage();
 
   // 1. Updated Login: Correctly saves the username for the Home Page preview

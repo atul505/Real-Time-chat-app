@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/date_separator.dart';
+import '../config/api_config.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String userName; // The OTHER person's name
@@ -104,7 +105,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
     try {
       final response = await http.get(
         Uri.parse(
-            'http://localhost:8080/api/messages?user1=$_currentUserName&user2=${widget.userName}'),
+            '${ApiConfig.messagesUrl}?user1=$_currentUserName&user2=${widget.userName}'),
       );
 
       if (response.statusCode == 200) {

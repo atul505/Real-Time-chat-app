@@ -9,6 +9,7 @@ import 'profile_page.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/user_avatar.dart';
+import '../config/api_config.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -53,7 +54,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   Future<void> _loadUsers() async {
     final String? loggedInUser = await _authService.getUsername();
-    final String url = 'http://localhost:8080/api/users?currentUser=$loggedInUser';
+    final String url = '${ApiConfig.usersUrl}?currentUser=$loggedInUser';
 
     try {
       final response = await http.get(Uri.parse(url));

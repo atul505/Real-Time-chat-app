@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import 'auth_service.dart'; // Add this line at the top
+import '../config/api_config.dart';
 
 import 'package:stomp_dart_client/stomp_frame.dart';
 
@@ -12,8 +13,7 @@ class ChatService {
   ChatService({required this.onMessageReceived}) {
     stompClient = StompClient(
       config: StompConfig(
-        // Use 'localhost' because of your successful ADB reverse!
-        url: 'ws://localhost:8080/ws',
+        url: ApiConfig.wsUrl,
         onConnect: onConnect,
         onStompError: (frame) => print('Stomp Error: ${frame.body}'),
         onWebSocketError: (dynamic error) => print('Websocket Error: $error'),
