@@ -1,23 +1,18 @@
-# Stage 1: Build
-FROM eclipse-temurin:17-jdk AS build
+# Stage 1: Build with Maven
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml first (for layer caching)
-COPY mvnw .
-COPY .mvn .mvn
+# Copy pom.xml first (for dependency layer caching)
 COPY pom.xml .
 
-# Make mvnw executable
-RUN chmod +x mvnw
-
 # Download dependencies (cached if pom.xml unchanged)
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
 # Copy source code and build
 COPY src src
-RUN ./mvnw package -DskipTests -B
+RUN mvn package -DskipTests -B
 
-# Stage 2: Run
+# Stage 2: Run with lightweight JRE
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
