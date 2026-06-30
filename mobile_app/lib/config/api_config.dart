@@ -13,7 +13,7 @@ class ApiConfig {
   //   static const String baseUrl = 'https://your-app-name.onrender.com';
   // ============================================================
 
-  static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = 'https://real-time-chat-app-3spq.onrender.com';
 
   // REST API endpoints
   static const String usersUrl = '$baseUrl/api/users';
