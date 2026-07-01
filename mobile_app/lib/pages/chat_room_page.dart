@@ -256,7 +256,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.image, color: AppTheme.primary),
+              leading: const Icon(Icons.image, color: AppTheme.accent),
               title: const Text('Image', style: TextStyle(color: AppTheme.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
@@ -264,7 +264,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
               },
             ),
             ListTile(
-              leading: const Icon(Icons.insert_drive_file, color: AppTheme.primary),
+              leading: const Icon(Icons.insert_drive_file, color: AppTheme.accent),
               title: const Text('Document', style: TextStyle(color: AppTheme.textPrimary)),
               onTap: () {
                 Navigator.pop(context);

@@ -74,8 +74,8 @@ class _AddContactPageState extends State<AddContactPage> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.surface,
-        title: const Text('Add Contact', style: TextStyle(color: AppTheme.text)),
-        iconTheme: const IconThemeData(color: AppTheme.text),
+        title: const Text('Add Contact', style: TextStyle(color: AppTheme.textPrimary)),
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
       ),
       body: Column(
         children: [
@@ -85,7 +85,7 @@ class _AddContactPageState extends State<AddContactPage> {
               controller: _searchController,
               onChanged: _searchUsers,
               placeholder: 'Search by username or email',
-              style: const TextStyle(color: AppTheme.text),
+              style: const TextStyle(color: AppTheme.textPrimary),
             ),
           ),
           if (_isLoading)
@@ -103,10 +103,10 @@ class _AddContactPageState extends State<AddContactPage> {
                       name: user['username'],
                       imageUrl: user['profileImage'],
                     ),
-                    title: Text(user['username'], style: const TextStyle(color: AppTheme.text)),
+                    title: Text(user['username'], style: const TextStyle(color: AppTheme.textPrimary)),
                     subtitle: Text(user['email'], style: const TextStyle(color: AppTheme.textMuted)),
                     trailing: IconButton(
-                      icon: const Icon(Icons.person_add, color: AppTheme.primary),
+                      icon: const Icon(Icons.person_add, color: AppTheme.accent),
                       onPressed: () => _addContact(user['username']),
                     ),
                   );

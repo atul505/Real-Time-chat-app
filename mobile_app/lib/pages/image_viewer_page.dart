@@ -22,7 +22,7 @@ class ImageViewerPage extends StatelessWidget {
           child: CachedNetworkImage(
             imageUrl: imageUrl,
             fit: BoxFit.contain,
-            placeholder: (context, url) => const CircularProgressIndicator(color: AppTheme.primary),
+            placeholder: (context, url) => const CircularProgressIndicator(color: AppTheme.accent),
             errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.white),
           ),
         ),

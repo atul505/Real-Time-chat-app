@@ -70,7 +70,7 @@ class _WallpaperPageState extends State<WallpaperPage> {
               children: [
                 ElevatedButton(
                   onPressed: _pickWallpaper,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accent),
                   child: const Text('Change', style: TextStyle(color: Colors.white)),
                 ),
                 if (_wallpaperPath != null)

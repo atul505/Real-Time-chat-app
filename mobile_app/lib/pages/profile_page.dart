@@ -121,12 +121,12 @@ class _ProfilePageState extends State<ProfilePage> {
         actions: [
           if (!_isEditing)
             IconButton(
-              icon: const Icon(Icons.edit, color: AppTheme.primary),
+              icon: const Icon(Icons.edit, color: AppTheme.accent),
               onPressed: () => setState(() => _isEditing = true),
             )
           else
             IconButton(
-              icon: const Icon(Icons.check, color: AppTheme.primary),
+              icon: const Icon(Icons.check, color: AppTheme.accent),
               onPressed: _updateProfile,
             ),
         ],
@@ -150,7 +150,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     right: 0,
                     child: Container(
                       decoration: const BoxDecoration(
-                        color: AppTheme.primary,
+                        color: AppTheme.accent,
                         shape: BoxShape.circle,
                       ),
                       padding: const EdgeInsets.all(6),
