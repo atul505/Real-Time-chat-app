@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
@@ -33,6 +34,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
   final FocusNode _focusNode = FocusNode();
   List<Map<String, dynamic>> _messages = [];
   late ChatService _chatService;
+  StreamSubscription? _messageSubscription;
   String? _currentUserName;
   bool _isInitialised = false;
   bool _showEmojiPicker = false;
@@ -116,29 +118,35 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
 
       await _loadHistory();
 
-      _chatService = ChatService(
-        username: myName,
-        onMessageReceived: (message) {
-          if (mounted) {
-            // Also update online status if we receive a message from them
-            if (message['sender'] == widget.userName) {
-              setState(() => _isOnline = true);
-            }
-            
-            bool isDuplicate = _messages.any((m) =>
-                m['content'] == message['content'] &&
-                m['timestamp'] == message['timestamp'] &&
-                m['sender'] == message['sender']);
+      // Use the singleton ChatService — no new connection created
+      _chatService = ChatService.getInstance(username: myName);
+      _messageSubscription = _chatService.messageStream.listen((message) {
+        if (!mounted) return;
+        
+        // Only process messages for this conversation
+        final sender = message['sender'] as String?;
+        final receiver = message['receiver'] as String?;
+        bool isRelevant = (sender == widget.userName && receiver == _currentUserName) ||
+                          (sender == _currentUserName && receiver == widget.userName);
+        if (!isRelevant) return;
 
-            if (!isDuplicate) {
-              setState(() {
-                _messages.add(message);
-              });
-              _scrollToBottom();
-            }
-          }
-        },
-      );
+        // Update online status if we receive a message from them
+        if (sender == widget.userName) {
+          setState(() => _isOnline = true);
+        }
+
+        bool isDuplicate = _messages.any((m) =>
+            m['content'] == message['content'] &&
+            m['timestamp'] == message['timestamp'] &&
+            m['sender'] == message['sender']);
+
+        if (!isDuplicate) {
+          setState(() {
+            _messages.add(message);
+          });
+          _scrollToBottom();
+        }
+      });
     }
   }
 
@@ -357,7 +365,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
 
   @override
   void dispose() {
-    _chatService.disconnect();
+    _messageSubscription?.cancel(); // Cancel subscription, but DON'T disconnect the singleton
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();

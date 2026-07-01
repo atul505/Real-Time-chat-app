@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
@@ -7,6 +8,7 @@ import 'login_page.dart';
 import 'chat_room_page.dart';
 import 'profile_page.dart';
 import '../services/auth_service.dart';
+import '../services/chat_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/user_avatar.dart';
 import '../config/api_config.dart';
@@ -26,6 +28,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   bool _isLoading = true;
   bool _isSearching = false;
   String? _currentUsername;
+  late ChatService _chatService;
+  StreamSubscription? _messageSubscription;
 
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _searchAnimController;
@@ -38,11 +42,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       duration: const Duration(milliseconds: 250),
     );
     _loadCurrentUser();
-    _loadUsers();
   }
 
   @override
   void dispose() {
+    _messageSubscription?.cancel();
     _searchController.dispose();
     _searchAnimController.dispose();
     super.dispose();
@@ -50,20 +54,86 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   Future<void> _loadCurrentUser() async {
     _currentUsername = await _authService.getUsername();
-    if (mounted) setState(() {});
+    if (_currentUsername != null && mounted) {
+      // Initialize the singleton ChatService with the username
+      _chatService = ChatService.getInstance(username: _currentUsername);
+      _listenForMessages();
+      _loadUsers();
+      setState(() {});
+    }
+  }
+
+  /// Listen to the real-time message stream and update the chat list instantly
+  void _listenForMessages() {
+    _messageSubscription?.cancel();
+    _messageSubscription = _chatService.messageStream.listen((message) {
+      if (!mounted) return;
+
+      final sender = message['sender'] as String?;
+      final receiver = message['receiver'] as String?;
+      final content = message['content'] as String? ?? '';
+      final timestamp = message['timestamp'] as String? ?? DateTime.now().toIso8601String();
+
+      // Determine who the "other person" is
+      String? otherUser;
+      if (sender == _currentUsername) {
+        otherUser = receiver;
+      } else {
+        otherUser = sender;
+      }
+      if (otherUser == null) return;
+
+      setState(() {
+        // Find existing user in the list
+        int existingIndex = _allUsers.indexWhere((u) => u['username'] == otherUser);
+
+        if (existingIndex >= 0) {
+          // Update existing entry
+          _allUsers[existingIndex] = {
+            ..._allUsers[existingIndex],
+            'lastMessage': content,
+            'lastMessageSender': sender,
+            'lastTime': timestamp,
+          };
+          // Move to top of list
+          final user = _allUsers.removeAt(existingIndex);
+          _allUsers.insert(0, user);
+        } else {
+          // New conversation — add to top
+          _allUsers.insert(0, {
+            'username': otherUser,
+            'lastMessage': content,
+            'lastMessageSender': sender,
+            'lastTime': timestamp,
+            'online': sender == otherUser, // if they sent us a message, they're online
+          });
+        }
+        _applyFilter();
+      });
+    });
+  }
+
+  void _applyFilter() {
+    final query = _searchController.text.toLowerCase();
+    if (query.isEmpty) {
+      _filteredUsers = List.from(_allUsers);
+    } else {
+      _filteredUsers = _allUsers
+          .where((user) => (user['username'] ?? '').toLowerCase().contains(query))
+          .toList();
+    }
   }
 
   Future<void> _loadUsers() async {
-    final String? loggedInUser = await _authService.getUsername();
-    final String url = '${ApiConfig.usersUrl}?currentUser=$loggedInUser';
+    final String url = '${ApiConfig.usersUrl}?currentUser=$_currentUsername';
 
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _allUsers = data.where((user) => user['username'] != loggedInUser).toList();
-          _filteredUsers = _allUsers;
+          _allUsers = data.where((user) => user['username'] != _currentUsername).toList();
+          _applyFilter();
           _isLoading = false;
         });
       }
@@ -75,9 +145,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   void _filterSearch(String query) {
     setState(() {
-      _filteredUsers = _allUsers
-          .where((user) => user['username'].toLowerCase().contains(query.toLowerCase()))
-          .toList();
+      _applyFilter();
     });
   }
 
@@ -86,7 +154,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _isSearching = !_isSearching;
       if (!_isSearching) {
         _searchController.clear();
-        _filteredUsers = _allUsers;
+        _applyFilter();
         _searchAnimController.reverse();
       } else {
         _searchAnimController.forward();
@@ -110,6 +178,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              ChatService.destroy(); // Clean up WebSocket on logout
               await _authService.logout();
               if (mounted) {
                 Navigator.pushReplacement(
