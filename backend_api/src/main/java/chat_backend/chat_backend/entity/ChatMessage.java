@@ -24,6 +24,10 @@ public class ChatMessage {
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
 
+    private String attachmentUrl;
+    private String attachmentType;
+    private String attachmentName;
+
     // Automatically set the server time when a message is first created
     @PrePersist
     protected void onCreate() {

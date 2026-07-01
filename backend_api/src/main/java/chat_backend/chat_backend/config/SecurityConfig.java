@@ -31,9 +31,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users/register", "/api/users/login").permitAll()
-                        .requestMatchers("/ws/**").permitAll() // WebSocket endpoint
-                        .requestMatchers("/api/messages").permitAll() // Chat history
-                        .requestMatchers("/api/users").permitAll() // User listing
+                        .requestMatchers("/ws/**").permitAll()       // WebSocket endpoint
+                        .requestMatchers("/api/messages/**").permitAll() // Chat history and delete
+                        .requestMatchers("/api/users/**").permitAll()    // User profile, status, search, list
+                        .requestMatchers("/api/contacts/**").permitAll() // Contacts
+                        .requestMatchers("/api/upload/**").permitAll()   // File upload
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

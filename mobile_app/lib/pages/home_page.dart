@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/user_avatar.dart';
 import '../config/api_config.dart';
+import 'add_contact_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -161,10 +162,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _loadUsers,
+        onPressed: () {
+          if (_currentUsername != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AddContactPage(currentUser: _currentUsername!)),
+            ).then((_) => _loadUsers());
+          }
+        },
         backgroundColor: AppTheme.accent,
         elevation: 4,
-        child: const Icon(Icons.edit, color: Colors.white, size: 22),
+        child: const Icon(Icons.person_add, color: Colors.white, size: 22),
       ),
     );
   }
@@ -391,7 +399,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 child: Text("Cancel", style: GoogleFonts.inter(color: AppTheme.textSecondary)),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
+                onPressed: () async {
+                  Navigator.pop(ctx, true);
+                  try {
+                    await http.delete(Uri.parse('${ApiConfig.messagesUrl}/conversation?user1=$_currentUsername&user2=$name'));
+                  } catch (e) {
+                    debugPrint('Delete error: $e');
+                  }
+                },
                 child: Text("Delete", style: GoogleFonts.inter(color: AppTheme.error, fontWeight: FontWeight.w600)),
               ),
             ],
@@ -420,7 +435,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   name: name,
                   radius: 28,
                   showOnline: true,
-                  isOnline: hasMessage, // show online if had recent messages
+                  isOnline: user['online'] ?? false,
+                  imageUrl: user['profileImage'],
                 ),
                 const SizedBox(width: 14),
                 // Name + Last message

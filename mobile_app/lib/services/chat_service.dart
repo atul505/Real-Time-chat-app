@@ -39,11 +39,14 @@ class ChatService {
     }
   }
 
-  void sendMessage(String sender, String content, String receiver) {
+  void sendMessage(String sender, String content, String receiver, {String? attachmentUrl, String? attachmentType, String? attachmentName}) {
     final message = {
       'sender': sender,
       'content': content,
-      'receiver': receiver, // This ensures Neon gets the receiver name
+      'receiver': receiver,
+      'attachmentUrl': attachmentUrl,
+      'attachmentType': attachmentType,
+      'attachmentName': attachmentName,
       'timestamp': DateTime.now().toIso8601String(),
     };
     stompClient.send(

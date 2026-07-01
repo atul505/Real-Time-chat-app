@@ -18,6 +18,10 @@ class ApiConfig {
   // REST API endpoints
   static const String usersUrl = '$baseUrl/api/users';
   static const String messagesUrl = '$baseUrl/api/messages';
+  static const String profileUrl = '$baseUrl/api/users'; // for GET /{username}/profile and PUT /profile
+  static const String contactsUrl = '$baseUrl/api/contacts';
+  static const String uploadUrl = '$baseUrl/api/upload';
+  static const String searchUrl = '$baseUrl/api/users/search';
 
   // WebSocket endpoint
   // Uses 'wss://' for HTTPS deployments, 'ws://' for local

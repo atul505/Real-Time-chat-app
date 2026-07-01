@@ -3,7 +3,11 @@ import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -11,6 +15,8 @@ import '../widgets/user_avatar.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/date_separator.dart';
 import '../config/api_config.dart';
+import '../utils/time_utils.dart';
+import 'wallpaper_page.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String userName; // The OTHER person's name
@@ -32,6 +38,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
   bool _showEmojiPicker = false;
   bool _showScrollToBottom = false;
   bool _hasText = false;
+  
+  // Other user's status
+  bool _isOnline = false;
+  String? _lastSeen;
+  String? _wallpaperPath;
 
   late AnimationController _sendBtnAnim;
 
@@ -44,7 +55,33 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
     );
     _messageController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
+    _loadWallpaper();
+    _fetchUserStatus();
     _initChat();
+  }
+
+  Future<void> _loadWallpaper() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _wallpaperPath = prefs.getString('chat_wallpaper');
+    });
+  }
+
+  Future<void> _fetchUserStatus() async {
+    try {
+      final response = await http.get(Uri.parse('${ApiConfig.profileUrl}/${widget.userName}/status'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _isOnline = data['online'] ?? false;
+            _lastSeen = data['lastSeen'];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Status Fetch Error: $e");
+    }
   }
 
   void _onTextChanged() {
@@ -82,6 +119,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
       _chatService = ChatService(
         onMessageReceived: (message) {
           if (mounted) {
+            // Also update online status if we receive a message from them
+            if (message['sender'] == widget.userName) {
+              setState(() => _isOnline = true);
+            }
+            
             bool isDuplicate = _messages.any((m) =>
                 m['content'] == message['content'] &&
                 m['timestamp'] == message['timestamp'] &&
@@ -142,6 +184,113 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
     _scrollToBottom();
   }
 
+  Future<void> _uploadAttachment(File file) async {
+    final String? myActualName = await _authService.getUsername();
+    if (myActualName == null) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Uploading attachment...')));
+
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.uploadUrl}/attachment'));
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        var responseData = await response.stream.bytesToString();
+        var data = jsonDecode(responseData);
+        
+        _chatService.sendMessage(
+          myActualName,
+          _messageController.text.trim(),
+          widget.userName,
+          attachmentUrl: data['url'],
+          attachmentType: data['type'],
+          attachmentName: data['name'],
+        );
+
+        setState(() {
+          _messages.add({
+            'sender': myActualName,
+            'content': _messageController.text.trim(),
+            'attachmentUrl': data['url'],
+            'attachmentType': data['type'],
+            'attachmentName': data['name'],
+            'timestamp': DateTime.now().toIso8601String(),
+          });
+        });
+        
+        _messageController.clear();
+        _scrollToBottom();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload failed')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload error')));
+      }
+    }
+  }
+
+  void _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      _uploadAttachment(File(pickedFile.path));
+    }
+  }
+
+  void _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result != null && result.files.single.path != null) {
+      _uploadAttachment(File(result.files.single.path!));
+    }
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.card,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.image, color: AppTheme.primary),
+              title: const Text('Image', style: TextStyle(color: AppTheme.textPrimary)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.insert_drive_file, color: AppTheme.primary),
+              title: const Text('Document', style: TextStyle(color: AppTheme.textPrimary)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickFile();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _clearChat() async {
+    final myName = await _authService.getUsername();
+    if (myName != null) {
+      try {
+        await http.delete(Uri.parse('${ApiConfig.messagesUrl}/conversation?user1=$myName&user2=${widget.userName}'));
+        setState(() {
+          _messages.clear();
+        });
+      } catch (e) {
+        debugPrint('Clear chat error: $e');
+      }
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -163,7 +312,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
     setState(() => _showEmojiPicker = !_showEmojiPicker);
   }
 
-  // Determine if we should show a date separator before this message
   bool _shouldShowDateSeparator(int index) {
     if (index == 0) return true;
     final current = _parseDate(_messages[index]['timestamp'] ?? "");
@@ -230,7 +378,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
                   child: Stack(
                     children: [
                       // Chat background
-                      Container(color: AppTheme.background),
+                      if (_wallpaperPath != null)
+                        Positioned.fill(
+                          child: Image.file(
+                            File(_wallpaperPath!),
+                            fit: BoxFit.cover,
+                            color: Colors.black.withAlpha(150),
+                            colorBlendMode: BlendMode.darken,
+                          ),
+                        )
+                      else
+                        Container(color: AppTheme.background),
+                      
                       // Messages list
                       ListView.builder(
                         controller: _scrollController,
@@ -242,7 +401,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
                           bool isMe = _currentUserName != null &&
                               messageSender == _currentUserName;
 
-                          // Show date separator if needed
                           final showDate = _shouldShowDateSeparator(index);
 
                           return Column(
@@ -259,6 +417,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
                                 showTail: index == _messages.length - 1 ||
                                     (_messages[index + 1]['sender'] ?? "") !=
                                         messageSender,
+                                attachmentUrl: msg['attachmentUrl'],
+                                attachmentType: msg['attachmentType'],
+                                attachmentName: msg['attachmentName'],
                               ),
                             ],
                           );
@@ -294,7 +455,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
                     child: EmojiPicker(
                       textEditingController: _messageController,
                       onEmojiSelected: (category, emoji) {
-                        // Trigger text change listener
                         _onTextChanged();
                       },
                       config: Config(
@@ -352,7 +512,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
             name: widget.userName,
             radius: 18,
             showOnline: true,
-            isOnline: true,
+            isOnline: _isOnline,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -370,9 +530,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  "online",
+                  _isOnline ? "online" : TimeUtils.formatLastSeen(_lastSeen),
                   style: GoogleFonts.inter(
-                    color: AppTheme.online,
+                    color: _isOnline ? AppTheme.online : AppTheme.textMuted,
                     fontSize: 12,
                   ),
                 ),
@@ -394,8 +554,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
           icon: const Icon(Icons.more_vert, color: AppTheme.textSecondary),
           color: AppTheme.card,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          onSelected: (value) {
-            // Placeholder for menu actions
+          onSelected: (value) async {
+            if (value == 'wallpaper') {
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const WallpaperPage()));
+              _loadWallpaper();
+            } else if (value == 'clear') {
+              _clearChat();
+            }
           },
           itemBuilder: (context) => [
             PopupMenuItem(
@@ -432,7 +597,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Emoji button
           IconButton(
             icon: Icon(
               _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
@@ -443,8 +607,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
             padding: const EdgeInsets.only(bottom: 2),
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           ),
-
-          // Text input
           Expanded(
             child: Container(
               constraints: const BoxConstraints(maxHeight: 120),
@@ -469,30 +631,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
                     borderRadius: BorderRadius.circular(22),
                     borderSide: BorderSide.none,
                   ),
-                  // Attachment button inside input
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.attach_file, color: AppTheme.textMuted, size: 22),
-                    onPressed: () {
-                      // Placeholder for attachment functionality
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Attachments coming soon!', style: GoogleFonts.inter()),
-                          backgroundColor: AppTheme.card,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
+                    onPressed: _showAttachmentOptions,
                   ),
                 ),
               ),
             ),
           ),
-
           const SizedBox(width: 4),
-
-          // Send / Mic button with animation
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
@@ -513,17 +660,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
                   )
                 : GestureDetector(
                     key: const ValueKey('mic'),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Voice messages coming soon!', style: GoogleFonts.inter()),
-                          backgroundColor: AppTheme.card,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
+                    onTap: () {},
                     child: Container(
                       width: 44,
                       height: 44,

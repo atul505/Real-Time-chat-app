@@ -52,4 +52,11 @@ public class ChatController {
                 user1, user2, user2, user1
         );
     }
+
+    @DeleteMapping("/api/messages/conversation")
+    @jakarta.transaction.Transactional
+    public org.springframework.http.ResponseEntity<?> deleteConversation(@RequestParam String user1, @RequestParam String user2) {
+        chatMessageRepository.deleteBySenderAndReceiverOrSenderAndReceiver(user1, user2, user2, user1);
+        return org.springframework.http.ResponseEntity.ok("Conversation deleted");
+    }
 }

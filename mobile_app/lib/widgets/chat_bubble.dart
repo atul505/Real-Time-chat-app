@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
+import '../pages/image_viewer_page.dart';
 
-/// WhatsApp/Telegram-style chat bubble with timestamp, status icon, and long-press copy
 class ChatBubble extends StatelessWidget {
   final String text;
   final String time;
   final bool isMe;
   final bool showTail;
+  final String? attachmentUrl;
+  final String? attachmentType;
+  final String? attachmentName;
 
   const ChatBubble({
     super.key,
@@ -16,24 +20,32 @@ class ChatBubble extends StatelessWidget {
     required this.time,
     required this.isMe,
     this.showTail = true,
+    this.attachmentUrl,
+    this.attachmentType,
+    this.attachmentName,
   });
 
   @override
   Widget build(BuildContext context) {
+    bool hasAttachment = attachmentUrl != null && attachmentUrl!.isNotEmpty;
+    bool isImage = attachmentType == 'image';
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onLongPress: () {
-          Clipboard.setData(ClipboardData(text: text));
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Message copied', style: GoogleFonts.inter()),
-              backgroundColor: AppTheme.card,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              duration: const Duration(seconds: 1),
-            ),
-          );
+          if (text.isNotEmpty) {
+            Clipboard.setData(ClipboardData(text: text));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Message copied', style: GoogleFonts.inter()),
+                backgroundColor: AppTheme.card,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          }
         },
         child: Container(
           constraints: BoxConstraints(
@@ -58,15 +70,78 @@ class ChatBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Message text
-              Text(
-                text,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 15,
-                  height: 1.35,
+              if (hasAttachment)
+                if (isImage)
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ImageViewerPage(
+                            imageUrl: attachmentUrl!,
+                            heroTag: attachmentUrl!,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Hero(
+                          tag: attachmentUrl!,
+                          child: CachedNetworkImage(
+                            imageUrl: attachmentUrl!,
+                            width: 200,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              width: 200, height: 200, color: Colors.grey[800],
+                              child: const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              width: 200, height: 200, color: Colors.grey[800],
+                              child: const Icon(Icons.error, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8.0),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(50),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.insert_drive_file, color: Colors.white, size: 24),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            attachmentName ?? 'File',
+                            style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+              if (text.isNotEmpty)
+                Text(
+                  text,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 15,
+                    height: 1.35,
+                  ),
                 ),
-              ),
               const SizedBox(height: 3),
               // Time + status row
               Row(

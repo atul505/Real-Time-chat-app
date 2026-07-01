@@ -26,4 +26,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             "OR (sender = ?2 AND receiver = ?1) " +
             "ORDER BY timestamp DESC LIMIT 1", nativeQuery = true)
     ChatMessage findLastMessageBetween(String user1, String user2);
+
+    void deleteBySenderAndReceiverOrSenderAndReceiver(String sender1, String receiver1, String sender2, String receiver2);
 }

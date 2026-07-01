@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 
-/// Reusable avatar widget with gradient background, initial letter, and optional online indicator
+/// Reusable avatar widget with gradient background, initial letter, optional online indicator, and image support
 class UserAvatar extends StatelessWidget {
   final String name;
   final double radius;
   final bool showOnline;
   final bool isOnline;
+  final String? imageUrl;
 
   const UserAvatar({
     super.key,
@@ -14,6 +16,7 @@ class UserAvatar extends StatelessWidget {
     this.radius = 24,
     this.showOnline = false,
     this.isOnline = false,
+    this.imageUrl,
   });
 
   @override
@@ -28,22 +31,51 @@ class UserAvatar extends StatelessWidget {
           height: radius * 2,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: colors,
-            ),
+            color: imageUrl != null ? Colors.grey[200] : null,
+            gradient: imageUrl == null
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: colors,
+                  )
+                : null,
           ),
-          child: Center(
-            child: Text(
-              initial,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: radius * 0.75,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          clipBehavior: Clip.hardEdge,
+          child: imageUrl != null && imageUrl!.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: imageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Center(
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: radius * 0.75,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Center(
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: radius * 0.75,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    initial,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: radius * 0.75,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
         ),
         if (showOnline && isOnline)
           Positioned(
