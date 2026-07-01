@@ -355,8 +355,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget _buildChatItem(BuildContext context, dynamic user) {
     String name = user['username'] ?? "Unknown";
     String lastMsg = user['lastMessage'] ?? "No messages yet";
+    String? lastMsgSender = user['lastMessageSender'];
     String rawTime = user['lastTime'] ?? "";
     bool hasMessage = lastMsg != "No messages yet";
+
+    // Format last message with "You: " prefix if sent by current user
+    String displayMsg = lastMsg;
+    if (hasMessage && lastMsgSender != null && lastMsgSender == _currentUsername) {
+      displayMsg = "You: $lastMsg";
+    }
 
     // Clean time formatting
     String formattedTime = "";
@@ -386,7 +393,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         child: const Icon(Icons.delete_outline, color: AppTheme.error, size: 26),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog<bool>(
+        final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: AppTheme.card,
@@ -399,19 +406,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 child: Text("Cancel", style: GoogleFonts.inter(color: AppTheme.textSecondary)),
               ),
               TextButton(
-                onPressed: () async {
-                  Navigator.pop(ctx, true);
-                  try {
-                    await http.delete(Uri.parse('${ApiConfig.messagesUrl}/conversation?user1=$_currentUsername&user2=$name'));
-                  } catch (e) {
-                    debugPrint('Delete error: $e');
-                  }
-                },
+                onPressed: () => Navigator.pop(ctx, true),
                 child: Text("Delete", style: GoogleFonts.inter(color: AppTheme.error, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
         );
+        if (confirmed == true) {
+          try {
+            await http.delete(Uri.parse('${ApiConfig.messagesUrl}/conversation?user1=$_currentUsername&user2=$name'));
+          } catch (e) {
+            debugPrint('Delete error: $e');
+          }
+          setState(() {
+            _allUsers.removeWhere((u) => u['username'] == name);
+            _filteredUsers.removeWhere((u) => u['username'] == name);
+          });
+        }
+        return false; // We handle removal ourselves via setState
       },
       child: Material(
         color: Colors.transparent,
@@ -470,7 +482,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        lastMsg,
+                        displayMsg,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(

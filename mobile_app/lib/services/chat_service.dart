@@ -1,20 +1,21 @@
 import 'dart:convert';
 import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
-import 'auth_service.dart'; // Add this line at the top
-import '../config/api_config.dart';
-
 import 'package:stomp_dart_client/stomp_frame.dart';
+import 'auth_service.dart';
+import '../config/api_config.dart';
 
 class ChatService {
   late StompClient stompClient;
   final Function(Map<String, dynamic>) onMessageReceived;
+  final String? username;
 
-  ChatService({required this.onMessageReceived}) {
+  ChatService({required this.onMessageReceived, this.username}) {
     stompClient = StompClient(
       config: StompConfig(
         url: ApiConfig.wsUrl,
         onConnect: onConnect,
+        stompConnectHeaders: username != null ? {'username': username!} : {},
         onStompError: (frame) => print('Stomp Error: ${frame.body}'),
         onWebSocketError: (dynamic error) => print('Websocket Error: $error'),
       ),
@@ -22,10 +23,8 @@ class ChatService {
     stompClient.activate();
   }
 
-  // Inside ChatService.dart
   void onConnect(StompFrame frame) async {
-    // Use the newly defined getUsername method
-    final String? myName = await AuthService().getUsername();
+    final String? myName = username ?? await AuthService().getUsername();
 
     if (myName != null) {
       stompClient.subscribe(
@@ -39,21 +38,23 @@ class ChatService {
     }
   }
 
-  void sendMessage(String sender, String content, String receiver, {String? attachmentUrl, String? attachmentType, String? attachmentName}) {
+  void sendMessage(String sender, String content, String receiver,
+      {String? attachmentUrl, String? attachmentType, String? attachmentName}) {
     final message = {
       'sender': sender,
       'content': content,
       'receiver': receiver,
-      'attachmentUrl': attachmentUrl,
-      'attachmentType': attachmentType,
-      'attachmentName': attachmentName,
       'timestamp': DateTime.now().toIso8601String(),
+      if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
+      if (attachmentType != null) 'attachmentType': attachmentType,
+      if (attachmentName != null) 'attachmentName': attachmentName,
     };
     stompClient.send(
       destination: '/app/chat',
       body: jsonEncode(message),
     );
   }
+
   void disconnect() {
     stompClient.deactivate();
   }

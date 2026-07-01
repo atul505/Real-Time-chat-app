@@ -117,6 +117,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> with TickerProviderStateMix
       await _loadHistory();
 
       _chatService = ChatService(
+        username: myName,
         onMessageReceived: (message) {
           if (mounted) {
             // Also update online status if we receive a message from them

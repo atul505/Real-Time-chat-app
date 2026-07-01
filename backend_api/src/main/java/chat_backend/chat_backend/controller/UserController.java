@@ -143,7 +143,7 @@ public class UserController {
     public List<UserDTO> getAllUsers(@RequestParam(required = false) String currentUser) {
         if (currentUser == null) {
             return userRepository.findAll().stream()
-                    .map(u -> new UserDTO(u.getUsername(), "No messages yet", "", false, null, u.getProfileImage()))
+                    .map(u -> new UserDTO(u.getUsername(), "No messages yet", null, "", false, null, u.getProfileImage()))
                     .collect(Collectors.toList());
         }
         
@@ -164,9 +164,10 @@ public class UserController {
             
             if (isContact || hasConversation) {
                 String content = hasConversation ? lastMsg.getContent() : "No messages yet";
+                String lastSender = hasConversation ? lastMsg.getSender() : null;
                 String time = hasConversation ? lastMsg.getTimestamp().toString() : "";
                 boolean online = WebSocketEventListener.isUserOnline(user.getUsername());
-                result.add(new UserDTO(user.getUsername(), content, time, online, user.getLastSeen(), user.getProfileImage()));
+                result.add(new UserDTO(user.getUsername(), content, lastSender, time, online, user.getLastSeen(), user.getProfileImage()));
             }
         }
         

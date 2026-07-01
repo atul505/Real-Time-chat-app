@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class UserDTO {
     private String username;
     private String lastMessage;
+    private String lastMessageSender;
     private String lastTime;
     private boolean online;
     private LocalDateTime lastSeen;
