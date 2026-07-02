@@ -257,7 +257,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         ),
       ),
       title: Text(
-        "Messenger",
+        "Echo",
         style: GoogleFonts.inter(
           fontSize: 20,
           fontWeight: FontWeight.w700,

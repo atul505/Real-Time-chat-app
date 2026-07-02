@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Telegram-inspired dark theme design system
+
 class AppTheme {
   // ── Core Colors ──────────────────────────────────────────────────────────
   static const Color background = Color(0xFF0E1621);
