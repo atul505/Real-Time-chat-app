@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
@@ -49,9 +50,9 @@ class ChatService {
         url: ApiConfig.wsUrl,
         stompConnectHeaders: {'username': username},
         onConnect: (frame) => _onConnect(frame, username),
-        onStompError: (frame) => print('Stomp Error: ${frame.body}'),
+        onStompError: (frame) => debugPrint('Stomp Error: ${frame.body}'),
         onWebSocketError: (error) {
-          print('WebSocket Error: $error');
+          debugPrint('WebSocket Error: $error');
           _isConnected = false;
           // Auto-reconnect after 3 seconds
           Future.delayed(const Duration(seconds: 3), () {
@@ -90,7 +91,7 @@ class ChatService {
   void sendMessage(String sender, String content, String receiver,
       {String? attachmentUrl, String? attachmentType, String? attachmentName}) {
     if (_stompClient == null || !_isConnected) {
-      print('Warning: STOMP not connected, attempting reconnect...');
+      debugPrint('Warning: STOMP not connected, attempting reconnect...');
       if (_connectedUsername != null) _connect(_connectedUsername!);
       return;
     }

@@ -21,7 +21,9 @@ mobile_app/.pub/
 .idea/
 *.iml
 *.iws
-.vscode/# Compiled class file
+.vscode/
+
+# Compiled class file
 *.class
 
 # Log file

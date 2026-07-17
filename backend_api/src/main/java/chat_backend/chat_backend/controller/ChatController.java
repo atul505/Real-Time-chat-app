@@ -41,7 +41,7 @@ public class ChatController {
 
     /**
      * Fetches private history between two users.
-     * Use this in Flutter: /api/messages?user1=Atul505&user2=Atulk
+     * Use this in Flutter: /api/messages?user1=alice&amp;user2=bob
      */
     @GetMapping("/api/messages")
     public List<ChatMessage> getChatHistory(

@@ -2,6 +2,8 @@ package chat_backend.chat_backend.config;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +13,8 @@ import java.util.Date;
 
 @Component
 public class JwtUtils {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtUtils.class);
 
     @Value("${JWT_SECRET}") // Injected from your .env via application.properties
     private String jwtSecret;
@@ -41,7 +45,7 @@ public class JwtUtils {
                     .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
-            System.err.println("JWT Validation Error: " + e.getMessage());
+            log.warn("JWT Validation Error: {}", e.getMessage());
             return false;
         }
     }
