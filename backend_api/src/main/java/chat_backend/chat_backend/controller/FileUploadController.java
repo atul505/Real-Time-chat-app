@@ -2,7 +2,6 @@ package chat_backend.chat_backend.controller;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
-import chat_backend.chat_backend.entity.User;
 import chat_backend.chat_backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -39,11 +38,12 @@ public class FileUploadController {
             }
 
             // Upload to Cloudinary
+            @SuppressWarnings("rawtypes")
             Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                     "folder", "chat-app/profile-images",
                     "public_id", username + "_profile",
                     "overwrite", true,
-                    "transformation", new com.cloudinary.Transformation().width(400).height(400).crop("fill").gravity("face")
+                    "transformation", new com.cloudinary.Transformation<>().width(400).height(400).crop("fill").gravity("face")
             ));
 
             String imageUrl = (String) uploadResult.get("secure_url");
@@ -73,6 +73,7 @@ public class FileUploadController {
             String resourceType = isImage ? "image" : "raw";
 
             // Upload to Cloudinary
+            @SuppressWarnings("rawtypes")
             Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                     "folder", "chat-app/attachments",
                     "resource_type", resourceType

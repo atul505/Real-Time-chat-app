@@ -29,9 +29,11 @@ public class User {
     private String profileImage;
 
     @Column(length = 500)
+    @Builder.Default
     private String about = "Hey there! I'm using Messenger";
 
     @Column(length = 500)
+    @Builder.Default
     private String status = "Available";
 
     private LocalDateTime lastSeen;
